@@ -109,7 +109,7 @@ void delete_extracted_files() {
     }
     else {
         while ((dir = readdir(d)) != NULL) {
-            if ((fnmatch(dir->d_name, "file_", 5) == 0) || (fnmatch(dir->d_name, "link_", 5)== 0)){
+            if ((fnmatch("file_*",dir->d_name, 0) == 0) || (fnmatch("link_*",dir->d_name, 0)== 0)){
                 if (stat(dir->d_name, &st) == 0) {
                     if (S_ISDIR(st.st_mode)) {
                         printf("Removing directory: %s\n", dir->d_name);
@@ -127,32 +127,32 @@ void delete_extracted_files() {
 
 void save_success( int attempt, const char *tar_file){
 
-char dest[256];
-snprintf(dest, sizeof(dest), "./success_%d_%s", attempt, tar_file);
+    char dest[256];
+    snprintf(dest, sizeof(dest), "./success_%d_%s", attempt, tar_file);
 
-FILE *src= fopen(tar_file,"rb");
-if(!src){
-    printf("failed to open a source file: %s\n", tar_file);
-    return;
-}
+    FILE *src= fopen(tar_file,"rb");
+    if(!src){
+        printf("failed to open a source file: %s\n", tar_file);
+        return;
+    }
 
-FILE *dst= fopen(tar_file,"wb");
-if(!dst){
-    printf("failed to open a dest file: %s\n", tar_file);
+    FILE *dst= fopen(tar_file,"wb");
+    if(!dst){
+        printf("failed to open a dest file: %s\n", tar_file);
+        fclose(src);
+        return;
+    }
+
+    char buffer[1024];
+    size_t n;
+    while ((n= fread(buffer,1,sizeof(buffer),src))>0){
+        fwrite(buffer,1,n,dst);
+    }
+
     fclose(src);
-    return;
-}
-
-char buffer[1024];
-size_t n;
-while ((n= fread(buffer,1,sizeof(buffer),src))>0){
-    fwrite(buffer,1,n,dst);
-}
-
-fclose(src);
-fclose(dst);
-printf("Archive saved as %s\n", dest);
-
+    fclose(dst);
+    printf("Archive saved as %s\n", dest);
+    
 
 }
 int main(int argc, char* argv[]) {
@@ -185,6 +185,7 @@ int main(int argc, char* argv[]) {
         } else {
             printf("Crash detected on attempt #%d\n", i+1);
             save_success(i+1, tar_file);
+            goto finally;
         }
     
     finally:
