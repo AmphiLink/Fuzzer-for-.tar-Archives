@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 /*Hello world*/
 struct tar_t
 {                              /* byte offset */
@@ -22,6 +23,27 @@ struct tar_t
     char padding[12];             /* 500 */
 };
 
+void trim(char *str) {
+    int start = 0, end = strlen(str) - 1;
+
+    // Trouver le premier caractère non espace
+    while (isspace((unsigned char)str[start])) {
+        start++;
+    }
+
+    // Trouver le dernier caractère non espace
+    while (end > start && isspace((unsigned char)str[end])) {
+        end--;
+    }
+
+    // Décaler la chaîne pour enlever les espaces en début
+    int i, j = 0;
+    for (i = start; i <= end; i++) {
+        str[j++] = str[i];
+    }
+    str[j] = '\0';  // Terminer la nouvelle chaîne
+}
+
 /**
  * Launches another executable given as argument,
  * parses its output and check whether or not it matches "*** The program has crashed ***".
@@ -41,7 +63,9 @@ int main(int argc, char* argv[])
     char cmd[51];
     strncpy(cmd, argv[1], 25);
     cmd[26] = '\0';
-    strncat(cmd, " archive.tar", 25);
+    char archive_name[256] = " archive.tar";
+    strncat(cmd, archive_name, 25);
+    trim(archive_name);
     char buf[33];
     FILE *fp;
 
@@ -54,12 +78,49 @@ int main(int argc, char* argv[])
         printf("No output\n");
         goto finally;
     }
-    if(strncmp(buf, "*** The program has crashed ***\n", 33)) {
+    if(!(strncmp(buf, "*** The program has crashed ***\n", 33))) {
         printf("Not the crash message\n");
         goto finally;
     } else {
         printf("Crash message\n");
         rv = 1;
+
+        // Calculer la taille restante pour le préfixe dans "dest"
+        char dest[256];
+        // L'espace réservé pour "success_" est de 8 caractères, donc l'espace restant est de 247
+        int remaining_space = sizeof(dest) - strlen("./success_") - 1;  // -1 pour le '\0'
+        
+        // Vérifier si l'archive_name s'adapte dans l'espace restant
+        if (strlen(archive_name) <= remaining_space) {
+            snprintf(dest, sizeof(dest), "./success_%s", archive_name);
+        } else {
+            // Si le nom est trop long, le tronquer pour s'assurer qu'il ne dépasse pas la taille
+            snprintf(dest, sizeof(dest), "./success_%.*s", remaining_space, archive_name);
+        }
+
+        // Copier l'archive dans le répertoire courant avec le nouveau nom
+        FILE *src = fopen(argv[1], "rb");  // Ouvrir le fichier source
+        if (src) {
+            // Ouvrir le fichier de destination avant de commencer à copier
+            FILE *dst = fopen(dest, "wb");
+            if (dst) {
+                char buffer[1024];
+                size_t n;
+                while ((n = fread(buffer, 1, sizeof(buffer), src)) > 0) {
+                    fwrite(buffer, 1, n, dst);
+                }
+                fclose(dst);
+                printf("Archive saved as %s\n", dest);
+            } else {
+                printf("Failed to open destination file.\n");
+                rv = -1;
+            }
+            fclose(src);
+        } else {
+            printf("Failed to open source file.\n");
+            rv = -1;
+        }
+
         goto finally;
     }
     finally:
