@@ -7,7 +7,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
+#include <fnmatch.h>
 #define BLOCK_SIZE 512
 #define TAR_NAME_LENGTH 100
 #define TAR_MAGIC "ustar"
@@ -104,9 +104,12 @@ void delete_extracted_files() {
     struct dirent *dir;
     struct stat st;
     d = opendir(".");
-    if (d) {
+    if(!d){
+        perror("Une erreur est survenu lors de l'ouverture du répertoire");
+    }
+    else {
         while ((dir = readdir(d)) != NULL) {
-            if ((strncmp(dir->d_name, "file_", 5) == 0) || (strncmp(dir->d_name, "link_", 5)== 0)){
+            if ((fnmatch(dir->d_name, "file_", 5) == 0) || (fnmatch(dir->d_name, "link_", 5)== 0)){
                 if (stat(dir->d_name, &st) == 0) {
                     if (S_ISDIR(st.st_mode)) {
                         printf("Removing directory: %s\n", dir->d_name);
@@ -122,6 +125,36 @@ void delete_extracted_files() {
     }
 }
 
+void save_success( int attempt, const char *tar_file){
+
+char dest[256];
+snprintf(dest, sizeof(dest), "./success_%d_%s", attempt, tar_file);
+
+FILE *src= fopen(tar_file,"rb");
+if(!src){
+    printf("failed to open a source file: %s\n", tar_file);
+    return;
+}
+
+FILE *dst= fopen(tar_file,"wb");
+if(!dst){
+    printf("failed to open a dest file: %s\n", tar_file);
+    fclose(src);
+    return;
+}
+
+char buffer[1024];
+size_t n;
+while ((n= fread(buffer,1,sizeof(buffer),src))>0){
+    fwrite(buffer,1,n,dst);
+}
+
+fclose(src);
+fclose(dst);
+printf("Archive saved as %s\n", dest);
+
+
+}
 int main(int argc, char* argv[]) {
     if (argc < 2) return -1;
     
@@ -151,29 +184,7 @@ int main(int argc, char* argv[]) {
             goto finally;
         } else {
             printf("Crash detected on attempt #%d\n", i+1);
-            char dest[256];
-            snprintf(dest, sizeof(dest), "./success_%d_%s", i+1, tar_file);
-
-            FILE *src = fopen(tar_file, "rb");
-            if (src) {
-                FILE *dst = fopen(dest, "wb");
-                if (dst) {
-                    char buffer[1024];
-                    size_t n;
-                    while ((n = fread(buffer, 1, sizeof(buffer), src)) > 0) {
-                        fwrite(buffer, 1, n, dst);
-                    }
-                    fclose(dst);
-                    printf("Archive saved as %s\n", dest);
-                } else {
-                    printf("Failed to open destination file.\n");
-                    rv = -1;
-                }
-                fclose(src);
-            } else {
-                printf("Failed to open source file.\n");
-                rv = -1;
-            }
+            save_success(i+1, tar_file);
         }
     
     finally:
