@@ -4,6 +4,9 @@
 #include <time.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #define BLOCK_SIZE 512
 #define TAR_NAME_LENGTH 100
@@ -96,6 +99,29 @@ void write_random_tar(const char *filename) {
     fclose(file);
 }
 
+void delete_extracted_files() {
+    DIR *d;
+    struct dirent *dir;
+    struct stat st;
+    d = opendir(".");
+    if (d) {
+        while ((dir = readdir(d)) != NULL) {
+            if ((strncmp(dir->d_name, "file_", 5) == 0) || (strncmp(dir->d_name, "link_", 5)== 0)){
+                if (stat(dir->d_name, &st) == 0) {
+                    if (S_ISDIR(st.st_mode)) {
+                        printf("Removing directory: %s\n", dir->d_name);
+                        rmdir(dir->d_name);
+                    } else {
+                        printf("Removing file: %s\n", dir->d_name);
+                        remove(dir->d_name);
+                    }
+                }
+            }
+        }
+        closedir(d);
+    }
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 2) return -1;
     
@@ -126,7 +152,7 @@ int main(int argc, char* argv[]) {
         } else {
             printf("Crash detected on attempt #%d\n", i+1);
             char dest[256];
-            snprintf(dest, sizeof(dest), "./success_%d%s", i+1, tar_file);
+            snprintf(dest, sizeof(dest), "./success_%d_%s", i+1, tar_file);
 
             FILE *src = fopen(tar_file, "rb");
             if (src) {
@@ -155,6 +181,8 @@ int main(int argc, char* argv[]) {
             printf("Command not found\n");
             rv = -1;
         }
+        delete_extracted_files();
     }
+    delete_extracted_files();
     return 0;
 }
