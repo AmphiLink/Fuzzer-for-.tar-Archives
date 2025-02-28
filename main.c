@@ -100,61 +100,37 @@ void write_random_tar(const char *filename) {
 }
 
 void delete_extracted_files() {
-    DIR *d;
-    struct dirent *dir;
-    struct stat st;
-    d = opendir(".");
-    if(!d){
-        perror("Une erreur est survenu lors de l'ouverture du répertoire");
-    }
-    else {
-        while ((dir = readdir(d)) != NULL) {
-            if ((fnmatch("file_*",dir->d_name, 0) == 0) || (fnmatch("link_*",dir->d_name, 0)== 0)){
-                if (stat(dir->d_name, &st) == 0) {
-                    if (S_ISDIR(st.st_mode)) {
-                        printf("Removing directory: %s\n", dir->d_name);
-                        rmdir(dir->d_name);
-                    } else {
-                        printf("Removing file: %s\n", dir->d_name);
-                        remove(dir->d_name);
-                    }
-                }
-            }
-        }
-        closedir(d);
-    }
+        system("find . ! -name '.gitignore' ! -name 'extractor_apple' ! -name 'extractor_x86_64' ! -name 'fuzzer_statement.pdf' ! -name 'main.c' ! -name 'README.md' ! -name 'fuzzer' ! -name 'fuzzer_statement.pdf' ! -name 'help.c' ! -name 'Makefile' ! -name 'success_*' ! -path './.' ! -path './..' ! -path './src' ! -path './src/*' ! -path './.git' ! -path './.idea' ! -path './.git/*' ! -path './.idea/*' -delete");   
 }
 
-void save_success( int attempt, const char *tar_file){
-
+void save_success(int attempt, const char *tar_file) {
     char dest[256];
     snprintf(dest, sizeof(dest), "./success_%d_%s", attempt, tar_file);
 
-    FILE *src= fopen(tar_file,"rb");
-    if(!src){
-        printf("failed to open a source file: %s\n", tar_file);
+    FILE *src = fopen(tar_file, "rb");
+    if (!src) {
+        printf("Failed to open the source file: %s\n", tar_file);
         return;
     }
 
-    FILE *dst= fopen(tar_file,"wb");
-    if(!dst){
-        printf("failed to open a dest file: %s\n", tar_file);
+    FILE *dst = fopen(dest, "wb");
+    if (!dst) {
+        printf("Failed to open the destination file: %s\n", dest);
         fclose(src);
         return;
     }
 
     char buffer[1024];
     size_t n;
-    while ((n= fread(buffer,1,sizeof(buffer),src))>0){
-        fwrite(buffer,1,n,dst);
+    while ((n = fread(buffer, 1, sizeof(buffer), src)) > 0) {
+        fwrite(buffer, 1, n, dst);
     }
 
     fclose(src);
     fclose(dst);
     printf("Archive saved as %s\n", dest);
-    
-
 }
+
 int main(int argc, char* argv[]) {
     if (argc < 2) return -1;
     
