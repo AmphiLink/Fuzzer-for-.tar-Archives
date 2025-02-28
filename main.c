@@ -35,6 +35,11 @@ struct tar_t {
     char padding[12]; 
 };
 
+int num_of_trials = 0;
+int num_of_success = 0;
+int num_of_no_output = 0;
+int num_not_crash_message = 0;
+
 void trim(char *str) {
     int start = 0, end = strlen(str) - 1;
     while (isspace((unsigned char)str[start])) start++;
@@ -101,7 +106,8 @@ void write_random_tar(const char *filename) {
 
 void delete_extracted_files() {
         system("find . ! -name '.gitignore' ! -name 'extractor_apple' ! -name 'extractor_x86_64' ! -name 'fuzzer_statement.pdf' ! -name 'main.c' ! -name 'README.md' ! -name 'fuzzer' ! -name 'fuzzer_statement.pdf' ! -name 'help.c' ! -name 'Makefile' ! -name 'success_*' ! -path './.' ! -path './..' ! -path './src' ! -path './src/*' ! -path './.git' ! -path './.idea' ! -path './.git/*' ! -path './.idea/*' -delete");   
-}
+        
+    }
 
 void save_success(int attempt, const char *tar_file) {
     char dest[256];
@@ -138,6 +144,7 @@ int main(int argc, char* argv[]) {
     const char *tar_file = "archive.tar";
     
     for (int i = 0; i < MAX_TRIES; i++) {
+        num_of_trials++;
         write_random_tar(tar_file);
         
         int rv = 0;
@@ -152,14 +159,17 @@ int main(int argc, char* argv[]) {
         }
 
         if(fgets(buf, 33, fp) == NULL) {
-            printf("No output\n");
+            num_of_no_output++;
+            //printf("No output\n");
             goto finally;
         }
         if(strncmp(buf, "*** The program has crashed ***", 30) != 0) {
-            printf("Not the crash message\n");
+            num_not_crash_message++;
+            //printf("Not the crash message\n");
             goto finally;
         } else {
-            printf("Crash detected on attempt #%d\n", i+1);
+            //printf("Crash detected on attempt #%d\n", i+1);
+            num_of_success++;
             save_success(i+1, tar_file);
             goto finally;
         }
@@ -172,5 +182,12 @@ int main(int argc, char* argv[]) {
         delete_extracted_files();
     }
     delete_extracted_files();
+
+    printf("\nTest status\n");
+    printf("Number of trials : %d\n", num_of_trials);
+    printf("Number of success: %d\n", num_of_success);
+    printf("Number of No output : %d\n", num_of_no_output);
+    printf("Number of No crash message: %d\n", num_not_crash_message);
+
     return 0;
 }
