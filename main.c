@@ -15,7 +15,7 @@
 #define MAX_TRIES 500
 
 #pragma pack(1)  // S'assurer que la structure fait exactement 512 octets
-struct tar_t {
+typedef struct tar_t {
     char name[100]; 
     char mode[8]; 
     char uid[8]; 
@@ -33,7 +33,10 @@ struct tar_t {
     char devminor[8]; 
     char prefix[155]; 
     char padding[12]; 
-};
+}tar_t;
+
+static tar_t header;
+
 
 int num_of_trials = 0;
 int num_of_success = 0;
@@ -104,6 +107,67 @@ void write_random_tar(const char *filename) {
     fclose(file);
 }
 
+
+void fuzz_field(char *field, size_t field_size, int test_case) { // prend en compte la taille et le type de test avec un pointeur vers le champ à tester 
+    memset(field, 0, field_size); // Nettoie tout avant les tests et initialise avec des 0
+
+    switch (test_case) {
+
+        // Test 1 : Champ vide (Copie d'une chaine vide )
+        case 1: 
+            printf("Test 1: Empty field\n");
+            strncpy(field, "", field_size);
+            break;
+
+        // Test 2 : Caractères non-ASCII (Ajout de caractère sup à 127 = caractere speciaux nn imprimables et ajout d'un \0 pour assurer que la chaine est bien terminé )
+        case 2: 
+            printf("Test 2: Non-ASCII field\n");
+            for (size_t i = 0; i < field_size - 1; i++) {
+                field[i] = 128 + (rand() % 128); 
+            }
+            field[field_size - 1] = '\0';
+            break;
+
+        // Test 3 : Caractères non numériques (Ajout de lettre au hasard pour vérif si c'est pas dans des caractère non numérique)
+        case 3: 
+            printf("Test 3: Non-numeric field\n");
+            for (size_t i = 0; i < field_size - 1; i++) {
+                field[i] = 'A' + (rand() % 26); 
+            }
+            field[field_size - 1] = '\0';
+            break;
+
+        // Cas où les tests ne marchent pas 
+        default: 
+            printf("Invalid test case\n");
+            return;
+    }
+
+    calculate_checksum(&header); // ça calcule la checksum du header pour verifier si les changements sont bien pris en compte 
+}
+
+void name_fuzzing() {
+    printf("\n~~~ Name header Fuzzing ~~~\n");
+    fuzz_field(header.name, sizeof(header.name), 1);
+    fuzz_field(header.name, sizeof(header.name), 2);
+    fuzz_field(header.name, sizeof(header.name), 3);
+}
+
+void mode_fuzzing() {
+    printf("\n~~~ Mode header Fuzzing ~~~\n");
+    fuzz_field(header.mode, sizeof(header.mode), 1);
+    fuzz_field(header.mode, sizeof(header.mode), 2);
+    fuzz_field(header.mode, sizeof(header.mode), 3);
+}
+
+void size_fuzzing() {
+    printf("\n~~~ Size header Fuzzing ~~~\n");
+    fuzz_field(header.size, sizeof(header.size), 1);
+    fuzz_field(header.size, sizeof(header.size), 2);
+    fuzz_field(header.size, sizeof(header.size), 3);
+}
+
+
 void delete_extracted_files() {
     system("find . ! -name '.gitignore' ! -name 'extractor_apple' ! -name 'extractor_x86_64' ! -name 'fuzzer_statement.pdf' ! -name 'main.c' ! -name 'README.md' ! -name 'fuzzer' ! -name 'fuzzer_statement.pdf' ! -name 'help.c' ! -name 'Makefile' ! -name 'success_*' ! -path './.' ! -path './..' ! -path './src' ! -path './src/*' ! -path './.git' ! -path './.idea' ! -path './.git/*' ! -path './.idea/*' -delete > /dev/null 2>&1");
 }
@@ -139,14 +203,20 @@ void save_success(int attempt, const char *tar_file) {
 
 int main(int argc, char* argv[]) {
     if (argc < 2) return -1;
-    
-    srand(time(NULL));
+
+    srand(time(NULL)); //generateur de nombre aleatoire initialisé
+
+    // Exécuter les tests spécifiques
+    name_fuzzing();
+    mode_fuzzing();
+    size_fuzzing();
+
     const char *tar_file = "archive.tar";
     
     for (int i = 0; i < MAX_TRIES; i++) {
         num_of_trials++;
         write_random_tar(tar_file);
-        
+
         int rv = 0;
         char cmd[256];
         snprintf(cmd, sizeof(cmd), "%s %s", argv[1], tar_file);
@@ -160,20 +230,17 @@ int main(int argc, char* argv[]) {
 
         if(fgets(buf, 33, fp) == NULL) {
             num_of_no_output++;
-            //printf("No output\n");
             goto finally;
         }
         if(strncmp(buf, "*** The program has crashed ***", 30) != 0) {
             num_not_crash_message++;
-            //printf("Not the crash message\n");
             goto finally;
         } else {
-            //printf("Crash detected on attempt #%d\n", i+1);
             num_of_success++;
             save_success(i+1, tar_file);
             goto finally;
         }
-    
+
     finally:
         if(pclose(fp) == -1) {
             printf("Command not found\n");
