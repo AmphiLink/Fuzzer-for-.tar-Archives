@@ -8,10 +8,15 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fnmatch.h>
+
 #define BLOCK_SIZE 512
 #define TAR_NAME_LENGTH 100
+
 #define TAR_MAGIC "ustar"
 #define TAR_VERSION "00"
+
+#define REGTYPE  '0'
+
 #define MAX_TRIES 500
 
 #pragma pack(1)  // S'assurer que la structure fait exactement 512 octets
@@ -37,11 +42,44 @@ typedef struct tar_t {
 
 static tar_t header;
 
+char* path_extractor;
+char* file_name;
 
-int num_of_trials = 0;
-int num_of_success = 0;
-int num_of_no_output = 0;
-int num_not_crash_message = 0;
+
+struct tests_info_t { // Struct to keep track of the status of various tests performed on the tar file
+    int num_of_trials;
+    int num_of_success;
+    int num_of_no_output;
+
+    int successful_with_empty_field;
+    int successful_with_non_ASCII_field;
+    int successful_with_non_numeric_field;
+
+    int name_fuzzing_success;
+    int mode_fuzzing_success;
+};
+
+struct tests_info_t tests_info;
+
+void init_tests_info(struct tests_info_t *ts) {
+    memset(ts, 0, sizeof(int)*28);
+}
+
+void print_tests(struct tests_info_t *ts) {
+    printf("\n\nTests:\n");
+    printf("Number of trials : %d\n", ts->num_of_trials);
+    printf("Number of success: %d\n", ts->num_of_success);
+    printf("Number of no output: %d\n\n", ts->num_of_no_output);
+    printf("Success with \n");
+    printf("\t     Empty field                       : %d\n", ts->successful_with_empty_field);
+    printf("\t     non ASCII field                   : %d\n", ts->successful_with_non_ASCII_field);
+    printf("\t     non numeric field                 : %d\n", ts->successful_with_non_numeric_field);
+    printf("Success on \n");
+    printf("\t   name field       : %d\n", ts->name_fuzzing_success);
+    printf("\t   mode field       : %d\n", ts->mode_fuzzing_success);
+}
+
+
 
 void trim(char *str) {
     int start = 0, end = strlen(str) - 1;
@@ -68,43 +106,60 @@ void generate_octal_value(char *buffer, size_t size, unsigned int max_value) {
 }
 
 void generate_tar_header(struct tar_t *header) {
+    char linkname[100] = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
     memset(header, 0, sizeof(struct tar_t));
+
     snprintf(header->name, TAR_NAME_LENGTH, "file_%d.txt", rand() % 1000);
-    generate_octal_value(header->mode, sizeof(header->mode), 0777);
-    generate_octal_value(header->uid, sizeof(header->uid), 1000);
-    generate_octal_value(header->gid, sizeof(header->gid), 1000);
-    generate_octal_value(header->size, sizeof(header->size), 1024);
-    generate_octal_value(header->mtime, sizeof(header->mtime), 16777216);
-    header->typeflag = '0' + (rand() % 8);
+    snprintf(header->mode, sizeof(header->mode), "07777");
+    snprintf(header->uid, sizeof(header->uid), "0000000");
+    snprintf(header->gid, sizeof(header->gid), "0000000");
+    snprintf(header->size, sizeof(header->size), 0);
+    snprintf(header->mtime, sizeof(header->mtime), time(NULL));
+    header->typeflag = REGTYPE;
     snprintf(header->linkname, sizeof(header->linkname), "link_%d", rand() % 100);
-    snprintf(header->uname, sizeof(header->uname), "user_%d", rand() % 100);
-    snprintf(header->gname, sizeof(header->gname), "group_%d", rand() % 100);
+    snprintf(header->uname, sizeof(header->uname), "student-linfo2347");
+    snprintf(header->gname, sizeof(header->gname), "student-linfo2347");
     strncpy(header->magic, TAR_MAGIC, 6);
     strncpy(header->version, TAR_VERSION, 2);
+    snprintf(header->devmajor, sizeof(header->devmajor),"%s", "0000000");
+    snprintf(header->devminor, sizeof(header->devminor),"%s", "0000000");
     calculate_checksum(header);
 }
 
-void write_random_tar(const char *filename) {
-    FILE *file = fopen(filename, "wb");
+void create_tar(tar_t* header, char* content_header, size_t content_header_size, char* end_data, size_t end_size) {
+    FILE *file = fopen(file_name, "wb");
     if (!file) {
         perror("Erreur ouverture fichier");
         exit(EXIT_FAILURE);
     }
     
-    int num_files = 1 + rand() % 5;  // Générer entre 1 et 5 fichiers
-    for (int i = 0; i < num_files; i++) {
-        struct tar_t header;
-        generate_tar_header(&header);
-        fwrite(&header, sizeof(struct tar_t), 1, file);
-        
-        char data[BLOCK_SIZE] = {0};
-        fwrite(data, 1, BLOCK_SIZE, file);
+    if (fwrite(header, sizeof(header), 1, file) != 1) {
+        perror("Error writing header");
+        fclose(file);
+        exit(EXIT_FAILURE);
+    }
+    if (content_header_size > 0 && fwrite(content_header, content_header_size, 1, file) != 1) {
+        perror("Error writing content");
+        fclose(file);
+        exit(EXIT_FAILURE);
+    }
+    if (end_size > 0 && fwrite(end_data, end_size, 1, file) != 1) {
+        perror("Error writing end bytes");
+        fclose(file);
+        exit(EXIT_FAILURE);
+    }
+    if (fclose(file) != 0) {
+        perror("Error closing file");
+        exit(EXIT_FAILURE);
     }
     
-    char end_block[BLOCK_SIZE * 2] = {0};
-    fwrite(end_block, 1, BLOCK_SIZE * 2, file);
-    
     fclose(file);
+}
+
+void create_base_tar(tar_t* header) {
+    char end_data[BLOCK_SIZE*2];
+    memset(end_data, 0, BLOCK_SIZE*2);
+    create_tar(header, NULL, 0, end_data, BLOCK_SIZE*2);
 }
 
 
@@ -201,60 +256,59 @@ void save_success(int attempt, const char *tar_file) {
     printf("Archive saved as %s\n", dest);
 }
 
-int main(int argc, char* argv[]) {
-    if (argc < 2) return -1;
+int extract(char* path){
+    tests_info.num_of_trials++;
+    int rv = 0;
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd), "%s %s", path, file_name);
+    char buf[33];
+    FILE *fp;
 
-    srand(time(NULL)); //generateur de nombre aleatoire initialisé
+    if ((fp = popen(cmd, "r")) == NULL) {
+        printf("Error opening pipe!\n");
+        return -1;
+    }
 
-    // Exécuter les tests spécifiques
-    name_fuzzing();
-    mode_fuzzing();
-    size_fuzzing();
-
-    const char *tar_file = "archive.tar";
-    
-    for (int i = 0; i < MAX_TRIES; i++) {
-        num_of_trials++;
-        write_random_tar(tar_file);
-
-        int rv = 0;
-        char cmd[256];
-        snprintf(cmd, sizeof(cmd), "%s %s", argv[1], tar_file);
-        char buf[33];
-        FILE *fp;
-
-        if ((fp = popen(cmd, "r")) == NULL) {
-            printf("Error opening pipe!\n");
-            return -1;
-        }
-
-        if(fgets(buf, 33, fp) == NULL) {
-            num_of_no_output++;
-            goto finally;
-        }
-        if(strncmp(buf, "*** The program has crashed ***", 30) != 0) {
-            num_not_crash_message++;
-            goto finally;
-        } else {
-            num_of_success++;
-            save_success(i+1, tar_file);
-            goto finally;
-        }
+    if(fgets(buf, 33, fp) == NULL) {
+        tests_info.num_of_no_output++;
+        goto finally;
+    }
+    if(strncmp(buf, "*** The program has crashed ***", 30) != 0) {
+        goto finally;
+    } else {
+        tests_info.num_of_success++;
+        save_success(tests_info.num_of_success, file_name);
+        goto finally;
+    }
 
     finally:
         if(pclose(fp) == -1) {
             printf("Command not found\n");
             rv = -1;
         }
-        delete_extracted_files();
+}
+
+int main(int argc, char* argv[]) {
+    if (argc < 2) 
+    {
+        printf("Wrong number of arguments.\n");
+        printf("Please provide the path of the extractor as an argument.");
+        return -1;
     }
+    path_extractor = argv[1];
+    file_name = file_name;
+    srand(time(NULL));
+    
+
+    init_tests_info(&tests_info);
+    // Exécuter les tests spécifiques
+    name_fuzzing();
+    mode_fuzzing();
+    size_fuzzing();
+        
     delete_extracted_files();
 
-    printf("\nTest status\n");
-    printf("Number of trials : %d\n", num_of_trials);
-    printf("Number of success: %d\n", num_of_success);
-    printf("Number of No output : %d\n", num_of_no_output);
-    printf("Number of No crash message: %d\n", num_not_crash_message);
+    print_tests(&tests_info);
 
     return 0;
 }
