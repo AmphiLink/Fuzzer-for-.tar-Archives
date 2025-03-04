@@ -19,6 +19,8 @@
 
 #define MAX_TRIES 500
 
+#define DELETE_SUCCESS "True"
+
 #pragma pack(1)  // S'assurer que la structure fait exactement 512 octets
 typedef struct tar_t {
     char name[100]; 
@@ -64,6 +66,13 @@ struct tests_info_t { // Struct to keep track of the status of various tests per
     int uid_fuzzing_success;
     int gid_fuzzing_success;
     int size_fuzzing_success;
+    int mtime_fuzzing_success;
+    int typeflag_fuzzing_success;
+    int linkname_fuzzing_success;
+    int uname_fuzzing_success;
+    int gname_fuzzing_success;
+    int magic_fuzzing_success;
+    int version_fuzzing_success;
 };
 
 struct tests_info_t tests_info;
@@ -91,6 +100,13 @@ void print_tests(struct tests_info_t *ts) {
     printf("\t   uid field       : %d\n", ts->uid_fuzzing_success);
     printf("\t   gid field       : %d\n", ts->gid_fuzzing_success);
     printf("\t   size field       : %d\n", ts->size_fuzzing_success);
+    printf("\t   mtime field       : %d\n", ts->mtime_fuzzing_success);
+    printf("\t   typeflag field       : %d\n", ts->typeflag_fuzzing_success);
+    printf("\t   linkname field       : %d\n", ts->linkname_fuzzing_success);
+    printf("\t   uname field       : %d\n", ts->uname_fuzzing_success);
+    printf("\t   gname field       : %d\n", ts->gname_fuzzing_success);
+    printf("\t   magic field       : %d\n", ts->magic_fuzzing_success);
+    printf("\t   version field       : %d\n", ts->version_fuzzing_success);
 }
 
 
@@ -332,6 +348,7 @@ void fuzz_field(char *field, size_t field_size) { // prend en compte la taille e
     }
 
     //Test 7 : multiple files
+    
     generate_tar_header(&header);
     create_base_tar(&header);
     multiple_files();
@@ -373,12 +390,73 @@ void size_fuzzing() {
     tests_info.size_fuzzing_success+= tests_info.num_of_success - previous_success;
 }
 
+void mtime_fuzzing() {
+    int previous_success = tests_info.num_of_success;
+    fuzz_field(header.mtime, sizeof(header.mtime));
+    tests_info.mtime_fuzzing_success+= tests_info.num_of_success - previous_success;
+}
 
-void delete_extracted_files() {
-    system("find . ! -name '.gitignore' ! -name 'extractor_apple' ! -name 'extractor_x86_64' ! -name 'fuzzer_statement.pdf' ! -name 'main.c' ! -name 'README.md' ! -name 'fuzzer' ! -name 'fuzzer_statement.pdf' ! -name 'help.c' ! -name 'Makefile' ! -name 'success_*' ! -path './.' ! -path './..' ! -path './src' ! -path './src/*' ! -path './.git' ! -path './.idea' ! -path './.git/*' ! -path './.idea/*' -delete > /dev/null 2>&1");
+void typeflag_fuzzing() {
+    int previous_success = tests_info.num_of_success;
+   
+    for (int i = 0; i <= 255; i++) {
+        generate_tar_header(&header);   
+        header.typeflag = (char)i;    
+        create_base_tar(&header);
+
+        if (extract(path_extractor) == 1) {
+            tests_info.typeflag_fuzzing_success++;
+        }
+    }
+}
+
+void linkname_fuzzing() {
+    int previous_success = tests_info.num_of_success;
+    fuzz_field(header.linkname, sizeof(header.linkname));
+    tests_info.linkname_fuzzing_success+= tests_info.num_of_success - previous_success;
+}
+void uname_fuzzing() {
+    int previous_success = tests_info.num_of_success;
+    fuzz_field(header.uname, sizeof(header.uname));
+    tests_info.uname_fuzzing_success+= tests_info.num_of_success - previous_success;
+}
+
+void gname_fuzzing() {
+    int previous_success = tests_info.num_of_success;
+    fuzz_field(header.gname, sizeof(header.gname));
+    tests_info.gname_fuzzing_success+= tests_info.num_of_success - previous_success;
+}
+
+void magic_fuzzing() {
+    int previous_success = tests_info.num_of_success;
+    fuzz_field(header.magic, sizeof(header.magic));
+    tests_info.magic_fuzzing_success+= tests_info.num_of_success - previous_success;
+}
+
+void version_fuzzing() {
+    int previous_success = tests_info.num_of_success;
+    fuzz_field(header.version, sizeof(header.version));
+    tests_info.version_fuzzing_success+= tests_info.num_of_success - previous_success;
 }
 
 
+void delete_extracted_files() {
+    if (DELETE_SUCCESS == "True"){
+        system("find . ! -name '.gitignore' ! -name 'extractor_apple' ! -name 'extractor_x86_64' ! -name 'fuzzer_statement.pdf' ! -name 'main.c' ! -name 'README.md' ! -name 'fuzzer' ! -name 'fuzzer_statement.pdf' ! -name 'help.c' ! -name 'Makefile' ! -path './.' ! -path './..' ! -path './src' ! -path './src/*' ! -path './.git' ! -path './.idea' ! -path './.git/*' ! -path './.idea/*' -delete > /dev/null 2>&1");
+    } else {
+        system("find . ! -name '.gitignore' ! -name 'extractor_apple' ! -name 'extractor_x86_64' ! -name 'fuzzer_statement.pdf' ! -name 'main.c' ! -name 'README.md' ! -name 'fuzzer' ! -name 'fuzzer_statement.pdf' ! -name 'help.c' ! -name 'Makefile' ! -name 'success_*' ! -path './.' ! -path './..' ! -path './src' ! -path './src/*' ! -path './.git' ! -path './.idea' ! -path './.git/*' ! -path './.idea/*' -delete > /dev/null 2>&1");
+    }
+}
+
+
+void clear_terminal() {
+    // Vérifier si le système est Unix ou Windows
+    #ifdef _WIN32
+        system("cls");  // Commande pour Windows
+    #else
+        system("clear");  // Commande pour Unix (Linux, macOS)
+    #endif
+}
 
 int main(int argc, char* argv[]) {
     if (argc < 2) 
@@ -399,9 +477,17 @@ int main(int argc, char* argv[]) {
     uid_fuzzing();
     gid_fuzzing();
     size_fuzzing();
+    mtime_fuzzing();
+    typeflag_fuzzing();
+    linkname_fuzzing();
+    uname_fuzzing();
+    gname_fuzzing();
+    version_fuzzing();
+    magic_fuzzing();
         
     delete_extracted_files();
 
+    clear_terminal();
     print_tests(&tests_info);
 
     return 0;
