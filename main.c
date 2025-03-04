@@ -163,63 +163,45 @@ void create_base_tar(tar_t* header) {
 }
 
 
-void fuzz_field(char *field, size_t field_size, int test_case) { // prend en compte la taille et le type de test avec un pointeur vers le champ à tester 
+void fuzz_field(char *field, size_t field_size) { // prend en compte la taille et le type de test avec un pointeur vers le champ à tester 
     memset(field, 0, field_size); // Nettoie tout avant les tests et initialise avec des 0
 
-    switch (test_case) {
-
-        // Test 1 : Champ vide (Copie d'une chaine vide )
-        case 1: 
-            printf("Test 1: Empty field\n");
-            strncpy(field, "", field_size);
-            break;
-
-        // Test 2 : Caractères non-ASCII (Ajout de caractère sup à 127 = caractere speciaux nn imprimables et ajout d'un \0 pour assurer que la chaine est bien terminé )
-        case 2: 
-            printf("Test 2: Non-ASCII field\n");
-            for (size_t i = 0; i < field_size - 1; i++) {
-                field[i] = 128 + (rand() % 128); 
-            }
-            field[field_size - 1] = '\0';
-            break;
-
-        // Test 3 : Caractères non numériques (Ajout de lettre au hasard pour vérif si c'est pas dans des caractère non numérique)
-        case 3: 
-            printf("Test 3: Non-numeric field\n");
-            for (size_t i = 0; i < field_size - 1; i++) {
-                field[i] = 'A' + (rand() % 26); 
-            }
-            field[field_size - 1] = '\0';
-            break;
-
-        // Cas où les tests ne marchent pas 
-        default: 
-            printf("Invalid test case\n");
-            return;
+    // Test 1 : Empty field
+    generate_tar_header(&header);
+    strncpy(field, "", field_size);
+    create_base_tar(&header);
+    if(extract(path_extractor) == 1){
+        tests_info.successful_with_non_ASCII_field++;
     }
+
+    // Test 2 : 
+    for (size_t i = 0; i < field_size - 1; i++) {
+        field[i] = 128 + (rand() % 128); 
+    }
+    field[field_size - 1] = '\0';
+
+    // Test 3 : Caractères non numériques (Ajout de lettre au hasard pour vérif si c'est pas dans des caractère non numérique)
+    for (size_t i = 0; i < field_size - 1; i++) {
+        field[i] = 'A' + (rand() % 26); 
+    }
+    field[field_size - 1] = '\0';
 
     calculate_checksum(&header); // ça calcule la checksum du header pour verifier si les changements sont bien pris en compte 
 }
 
 void name_fuzzing() {
     printf("\n~~~ Name header Fuzzing ~~~\n");
-    fuzz_field(header.name, sizeof(header.name), 1);
-    fuzz_field(header.name, sizeof(header.name), 2);
-    fuzz_field(header.name, sizeof(header.name), 3);
+    fuzz_field(header.name, sizeof(header.name));
 }
 
 void mode_fuzzing() {
     printf("\n~~~ Mode header Fuzzing ~~~\n");
-    fuzz_field(header.mode, sizeof(header.mode), 1);
-    fuzz_field(header.mode, sizeof(header.mode), 2);
-    fuzz_field(header.mode, sizeof(header.mode), 3);
+    fuzz_field(header.mode, sizeof(header.mode));
 }
 
 void size_fuzzing() {
     printf("\n~~~ Size header Fuzzing ~~~\n");
-    fuzz_field(header.size, sizeof(header.size), 1);
-    fuzz_field(header.size, sizeof(header.size), 2);
-    fuzz_field(header.size, sizeof(header.size), 3);
+    fuzz_field(header.size, sizeof(header.size));
 }
 
 
