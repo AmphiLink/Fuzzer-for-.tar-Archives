@@ -57,12 +57,14 @@ struct tests_info_t { // Struct to keep track of the status of various tests per
 
     int name_fuzzing_success;
     int mode_fuzzing_success;
+    int size_fuzzing_success;
 };
 
 struct tests_info_t tests_info;
 
 void init_tests_info(struct tests_info_t *ts) {
-    memset(ts, 0, sizeof(int)*28);
+    memset(ts, 0, sizeof(int)*9);
+    printf("test infos passed!");
 }
 
 void print_tests(struct tests_info_t *ts) {
@@ -77,6 +79,7 @@ void print_tests(struct tests_info_t *ts) {
     printf("Success on \n");
     printf("\t   name field       : %d\n", ts->name_fuzzing_success);
     printf("\t   mode field       : %d\n", ts->mode_fuzzing_success);
+    printf("\t   size field       : %d\n", ts->size_fuzzing_success);
 }
 
 
@@ -109,18 +112,18 @@ void generate_tar_header(struct tar_t *header) {
     char linkname[100] = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
     memset(header, 0, sizeof(struct tar_t));
 
-    snprintf(header->name, TAR_NAME_LENGTH, "file_%d.txt", rand() % 1000);
+    snprintf(header->name, TAR_NAME_LENGTH, "%s","file_%d.txt", rand() % 1000);
     snprintf(header->mode, sizeof(header->mode), "07777");
-    snprintf(header->uid, sizeof(header->uid), "0000000");
-    snprintf(header->gid, sizeof(header->gid), "0000000");
-    snprintf(header->size, sizeof(header->size), 0);
-    snprintf(header->mtime, sizeof(header->mtime), time(NULL));
+    snprintf(header->uid, sizeof(header->uid), "%s","0000000");
+    snprintf(header->gid, sizeof(header->gid), "%s","0000000");
+    snprintf(header->size, sizeof(header->size),"%011o", 0);
+    snprintf(header->mtime, sizeof(header->mtime),"%011lo", time(NULL));
     header->typeflag = REGTYPE;
-    snprintf(header->linkname, sizeof(header->linkname), "link_%d", rand() % 100);
+    snprintf(header->linkname, sizeof(header->linkname), "%s", linkname);
     snprintf(header->uname, sizeof(header->uname), "student-linfo2347");
     snprintf(header->gname, sizeof(header->gname), "student-linfo2347");
-    strncpy(header->magic, TAR_MAGIC, 6);
-    strncpy(header->version, TAR_VERSION, 2);
+    snprintf(header->magic, sizeof(header->magic),TAR_MAGIC);
+    snprintf(header->version, sizeof(header->version) + 1,TAR_VERSION);
     snprintf(header->devmajor, sizeof(header->devmajor),"%s", "0000000");
     snprintf(header->devminor, sizeof(header->devminor),"%s", "0000000");
     calculate_checksum(header);
@@ -153,7 +156,6 @@ void create_tar(tar_t* header, char* content_header, size_t content_header_size,
         exit(EXIT_FAILURE);
     }
     
-    fclose(file);
 }
 
 void create_base_tar(tar_t* header) {
@@ -161,54 +163,6 @@ void create_base_tar(tar_t* header) {
     memset(end_data, 0, BLOCK_SIZE*2);
     create_tar(header, NULL, 0, end_data, BLOCK_SIZE*2);
 }
-
-
-void fuzz_field(char *field, size_t field_size) { // prend en compte la taille et le type de test avec un pointeur vers le champ à tester 
-    memset(field, 0, field_size); // Nettoie tout avant les tests et initialise avec des 0
-
-    // Test 1 : Empty field
-    generate_tar_header(&header);
-    strncpy(field, "", field_size);
-    create_base_tar(&header);
-    if(extract(path_extractor) == 1){
-        tests_info.successful_with_non_ASCII_field++;
-    }
-
-    // Test 2 : 
-    for (size_t i = 0; i < field_size - 1; i++) {
-        field[i] = 128 + (rand() % 128); 
-    }
-    field[field_size - 1] = '\0';
-
-    // Test 3 : Caractères non numériques (Ajout de lettre au hasard pour vérif si c'est pas dans des caractère non numérique)
-    for (size_t i = 0; i < field_size - 1; i++) {
-        field[i] = 'A' + (rand() % 26); 
-    }
-    field[field_size - 1] = '\0';
-
-    calculate_checksum(&header); // ça calcule la checksum du header pour verifier si les changements sont bien pris en compte 
-}
-
-void name_fuzzing() {
-    printf("\n~~~ Name header Fuzzing ~~~\n");
-    fuzz_field(header.name, sizeof(header.name));
-}
-
-void mode_fuzzing() {
-    printf("\n~~~ Mode header Fuzzing ~~~\n");
-    fuzz_field(header.mode, sizeof(header.mode));
-}
-
-void size_fuzzing() {
-    printf("\n~~~ Size header Fuzzing ~~~\n");
-    fuzz_field(header.size, sizeof(header.size));
-}
-
-
-void delete_extracted_files() {
-    system("find . ! -name '.gitignore' ! -name 'extractor_apple' ! -name 'extractor_x86_64' ! -name 'fuzzer_statement.pdf' ! -name 'main.c' ! -name 'README.md' ! -name 'fuzzer' ! -name 'fuzzer_statement.pdf' ! -name 'help.c' ! -name 'Makefile' ! -name 'success_*' ! -path './.' ! -path './..' ! -path './src' ! -path './src/*' ! -path './.git' ! -path './.idea' ! -path './.git/*' ! -path './.idea/*' -delete > /dev/null 2>&1");
-}
-
 
 void save_success(int attempt, const char *tar_file) {
     char dest[256];
@@ -233,10 +187,16 @@ void save_success(int attempt, const char *tar_file) {
         fwrite(buffer, 1, n, dst);
     }
 
-    fclose(src);
-    fclose(dst);
+    if (fclose(src) != 0) {
+    perror("Error closing source file");
+    }
+    if (fclose(dst) != 0) {
+        perror("Error closing destination file");
+    }
+
     printf("Archive saved as %s\n", dest);
 }
+
 
 int extract(char* path){
     tests_info.num_of_trials++;
@@ -244,31 +204,104 @@ int extract(char* path){
     char cmd[256];
     snprintf(cmd, sizeof(cmd), "%s %s", path, file_name);
     char buf[33];
-    FILE *fp;
+    FILE *fp = popen(cmd, "r");
 
-    if ((fp = popen(cmd, "r")) == NULL) {
+    if (fp == NULL) {
         printf("Error opening pipe!\n");
         return -1;
     }
 
     if(fgets(buf, 33, fp) == NULL) {
         tests_info.num_of_no_output++;
-        goto finally;
-    }
-    if(strncmp(buf, "*** The program has crashed ***", 30) != 0) {
-        goto finally;
-    } else {
+        rv = 0;
+    } else if(strncmp(buf, "*** The program has crashed ***", 30) == 0) {
+        rv = 1;
         tests_info.num_of_success++;
         save_success(tests_info.num_of_success, file_name);
-        goto finally;
     }
 
-    finally:
-        if(pclose(fp) == -1) {
-            printf("Command not found\n");
-            rv = -1;
-        }
+    if (pclose(fp) == -1) {
+        printf("Command not found\n");
+        rv = -1;
+    }
+
+    return rv;
 }
+
+
+char generate_non_numeric_char() {
+    // Choisir un caractère parmi les lettres ou symboles ASCII
+    char c;
+    int choice = rand() % 2;
+    if (choice == 0) {
+        // Lettres majuscules ou minuscules
+        c = (rand() % 26) + (rand() % 2 == 0 ? 'A' : 'a');
+    } else {
+        // Symboles ASCII comme !, @, #, $, %, etc.
+        const char symbols[] = "!@#$%^&*()_-+=<>?";
+        c = symbols[rand() % (sizeof(symbols) - 1)];
+    }
+    return c;
+}
+
+void fuzz_field(char *field, size_t field_size) { // prend en compte la taille et le type de test avec un pointeur vers le champ à tester 
+    // Test 1 : Empty field
+    generate_tar_header(&header);
+    strncpy(field, "", field_size);
+    create_base_tar(&header);
+    if(extract(path_extractor) == 1){
+        tests_info.successful_with_empty_field++;
+    }
+
+    // Test 2 : Non-Numeric field
+    generate_tar_header(&header);
+    for (size_t i = 0; i < field_size; i++) {
+        field[i -1] = generate_non_numeric_char();
+    }
+    field[field_size] = '\0';
+    create_base_tar(&header);
+    if(extract(path_extractor) == 1){
+        tests_info.successful_with_non_numeric_field++;
+    }
+
+    // Test 3 : ASCII Field
+    generate_tar_header(&header);
+    for (size_t i = 0; i < field_size - 1; i++) {
+        field[i - 1] = 128 + (rand() % 128); 
+    }
+    field[field_size] = '\0';
+    create_base_tar(&header);
+    if(extract(path_extractor) == 1){
+        tests_info.successful_with_non_ASCII_field++;
+    }
+
+    calculate_checksum(&header); // ça calcule la checksum du header pour verifier si les changements sont bien pris en compte 
+}
+
+void name_fuzzing() {
+    int previous_success = tests_info.num_of_success;
+    fuzz_field(header.name, sizeof(header.name));
+    tests_info.name_fuzzing_success+= tests_info.num_of_success - previous_success;
+}
+
+void mode_fuzzing() {
+    int previous_success = tests_info.num_of_success;
+    fuzz_field(header.mode, sizeof(header.mode));
+    tests_info.mode_fuzzing_success+= tests_info.num_of_success - previous_success;
+}
+
+void size_fuzzing() {
+    int previous_success = tests_info.num_of_success;
+    fuzz_field(header.size, sizeof(header.size));
+    tests_info.size_fuzzing_success+= tests_info.num_of_success - previous_success;
+}
+
+
+void delete_extracted_files() {
+    system("find . ! -name '.gitignore' ! -name 'extractor_apple' ! -name 'extractor_x86_64' ! -name 'fuzzer_statement.pdf' ! -name 'main.c' ! -name 'README.md' ! -name 'fuzzer' ! -name 'fuzzer_statement.pdf' ! -name 'help.c' ! -name 'Makefile' ! -name 'success_*' ! -path './.' ! -path './..' ! -path './src' ! -path './src/*' ! -path './.git' ! -path './.idea' ! -path './.git/*' ! -path './.idea/*' -delete > /dev/null 2>&1");
+}
+
+
 
 int main(int argc, char* argv[]) {
     if (argc < 2) 
@@ -277,8 +310,9 @@ int main(int argc, char* argv[]) {
         printf("Please provide the path of the extractor as an argument.");
         return -1;
     }
+    printf("In main");
     path_extractor = argv[1];
-    file_name = file_name;
+    file_name = "Archive.tar";
     srand(time(NULL));
     
 
