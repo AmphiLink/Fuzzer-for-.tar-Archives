@@ -54,17 +54,22 @@ struct tests_info_t { // Struct to keep track of the status of various tests per
     int successful_with_empty_field;
     int successful_with_non_ASCII_field;
     int successful_with_non_numeric_field;
+    int successful_with_non_null_terminated_field; 
+    int successful_with_null_byte_in_middle;       
+    int successful_with_non_null_bit_start;
+    int successful_with_multiple_files;
 
     int name_fuzzing_success;
     int mode_fuzzing_success;
+    int uid_fuzzing_success;
+    int gid_fuzzing_success;
     int size_fuzzing_success;
 };
 
 struct tests_info_t tests_info;
 
 void init_tests_info(struct tests_info_t *ts) {
-    memset(ts, 0, sizeof(int)*9);
-    printf("test infos passed!");
+    memset(ts, 0, sizeof(int)*12);
 }
 
 void print_tests(struct tests_info_t *ts) {
@@ -72,13 +77,19 @@ void print_tests(struct tests_info_t *ts) {
     printf("Number of trials : %d\n", ts->num_of_trials);
     printf("Number of success: %d\n", ts->num_of_success);
     printf("Number of no output: %d\n\n", ts->num_of_no_output);
-    printf("Success with \n");
+    printf("Success with Tests: \n");
     printf("\t     Empty field                       : %d\n", ts->successful_with_empty_field);
     printf("\t     non ASCII field                   : %d\n", ts->successful_with_non_ASCII_field);
     printf("\t     non numeric field                 : %d\n", ts->successful_with_non_numeric_field);
-    printf("Success on \n");
+    printf("\t     non null terminated field         : %d\n", ts->successful_with_non_null_terminated_field); 
+    printf("\t     null byte in the middle of field  : %d\n", ts->successful_with_null_byte_in_middle);  
+    printf("\t     non null bit start                : %d\n", ts->successful_with_non_null_bit_start);  
+    printf("\t     multiple files                    : %d\n", ts->successful_with_multiple_files);
+    printf("Success with header's fields: \n");
     printf("\t   name field       : %d\n", ts->name_fuzzing_success);
     printf("\t   mode field       : %d\n", ts->mode_fuzzing_success);
+    printf("\t   uid field       : %d\n", ts->uid_fuzzing_success);
+    printf("\t   gid field       : %d\n", ts->gid_fuzzing_success);
     printf("\t   size field       : %d\n", ts->size_fuzzing_success);
 }
 
@@ -109,10 +120,13 @@ void generate_octal_value(char *buffer, size_t size, unsigned int max_value) {
 }
 
 void generate_tar_header(struct tar_t *header) {
+    int x = rand() % 1000 + 1;
+    char filename[100];
+    snprintf(filename, sizeof(filename), "file_%d.txt", x);
     char linkname[100] = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-    memset(header, 0, sizeof(struct tar_t));
+    memset(header, 0, sizeof(tar_t));
 
-    snprintf(header->name, TAR_NAME_LENGTH, "%s","file_%d.txt", rand() % 1000);
+    snprintf(header->name, TAR_NAME_LENGTH, "%s",filename);
     snprintf(header->mode, sizeof(header->mode), "07777");
     snprintf(header->uid, sizeof(header->uid), "%s","0000000");
     snprintf(header->gid, sizeof(header->gid), "%s","0000000");
@@ -136,7 +150,7 @@ void create_tar(tar_t* header, char* content_header, size_t content_header_size,
         exit(EXIT_FAILURE);
     }
     
-    if (fwrite(header, sizeof(header), 1, file) != 1) {
+    if (fwrite(header, sizeof(tar_t), 1, file) != 1) {
         perror("Error writing header");
         fclose(file);
         exit(EXIT_FAILURE);
@@ -244,6 +258,22 @@ char generate_non_numeric_char() {
     return c;
 }
 
+void multiple_files(){
+    FILE *file = fopen(file_name, "wb");
+    for (int i=0; i<2; i++){
+        generate_tar_header(&header);
+        fwrite(&header, sizeof(struct tar_t), 1, file);
+        
+        char data[BLOCK_SIZE] = {0};
+        fwrite(data, 1, BLOCK_SIZE, file);
+    }
+
+    char end_block[BLOCK_SIZE * 2] = {0};
+    fwrite(end_block, 1, BLOCK_SIZE * 2, file);
+    
+    fclose(file);
+}
+
 void fuzz_field(char *field, size_t field_size) { // prend en compte la taille et le type de test avec un pointeur vers le champ à tester 
     // Test 1 : Empty field
     generate_tar_header(&header);
@@ -274,8 +304,43 @@ void fuzz_field(char *field, size_t field_size) { // prend en compte la taille e
     if(extract(path_extractor) == 1){
         tests_info.successful_with_non_ASCII_field++;
     }
+    // Test 4 : Field not terminated by null byte
+    generate_tar_header(&header);
+    for (size_t i = 0; i < field_size - 1; i++) {
+        field[i] = 'A' + (rand() % 26); 
+    }
+    
+    create_base_tar(&header);
+    if(extract(path_extractor) == 1) {
+        tests_info.successful_with_non_null_terminated_field++;
+    }
 
-    calculate_checksum(&header); // ça calcule la checksum du header pour verifier si les changements sont bien pris en compte 
+    // Test 5 : Null byte in the middle of the field
+    generate_tar_header(&header);
+    field[field_size / 2] = '\0'; 
+    create_base_tar(&header);
+    if(extract(path_extractor) == 1) {
+        tests_info.successful_with_null_byte_in_middle++;
+    }
+
+    // Test 6 : Field starting with a non-null bit
+    generate_tar_header(&header);
+    field[0] = 1; 
+    create_base_tar(&header);
+    if(extract(path_extractor) == 1) {
+        tests_info.successful_with_non_null_bit_start++;
+    }
+
+    //Test 7 : multiple files
+    generate_tar_header(&header);
+    create_base_tar(&header);
+    multiple_files();
+    if(extract(path_extractor) == 1){
+        tests_info.successful_with_multiple_files++;
+    }
+
+
+    calculate_checksum(&header);
 }
 
 void name_fuzzing() {
@@ -288,6 +353,18 @@ void mode_fuzzing() {
     int previous_success = tests_info.num_of_success;
     fuzz_field(header.mode, sizeof(header.mode));
     tests_info.mode_fuzzing_success+= tests_info.num_of_success - previous_success;
+}
+
+void uid_fuzzing(){
+    int previous_success = tests_info.num_of_success;
+    fuzz_field(header.uid, sizeof(header.uid));
+    tests_info.uid_fuzzing_success+= tests_info.num_of_success - previous_success;
+}
+
+void gid_fuzzing(){
+    int previous_success = tests_info.num_of_success;
+    fuzz_field(header.gid, sizeof(header.gid));
+    tests_info.gid_fuzzing_success+= tests_info.num_of_success - previous_success;
 }
 
 void size_fuzzing() {
@@ -310,7 +387,6 @@ int main(int argc, char* argv[]) {
         printf("Please provide the path of the extractor as an argument.");
         return -1;
     }
-    printf("In main");
     path_extractor = argv[1];
     file_name = "Archive.tar";
     srand(time(NULL));
@@ -320,6 +396,8 @@ int main(int argc, char* argv[]) {
     // Exécuter les tests spécifiques
     name_fuzzing();
     mode_fuzzing();
+    uid_fuzzing();
+    gid_fuzzing();
     size_fuzzing();
         
     delete_extracted_files();
