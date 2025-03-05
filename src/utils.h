@@ -60,6 +60,7 @@ typedef struct tar_t {
 
 extern struct tests_info_t tests_info;
 
+// Setting all the functions for the header
 void init_tests_info(struct tests_info_t *ts);
 void print_tests(struct tests_info_t *ts);
 unsigned int calculate_checksum(struct tar_t* entry);

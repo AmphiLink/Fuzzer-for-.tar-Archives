@@ -11,11 +11,19 @@
 #include "utils.h"
 
 struct tests_info_t tests_info;
-
+/**
+ * This function initializes the tests_info_t structure by setting all its values to 0.
+ * @param ts Pointer to the tests_info_t structure to initialize.
+ */
 void init_tests_info(struct tests_info_t *ts) {
     memset(ts, 0, sizeof(int)*26);
 }
 
+/**
+ * This function prints the test results stored in the tests_info_t structure.
+ * @param ts Pointer to the tests_info_t structure containing test results.
+ * The output shows which fields were tested successfully and is useful for debugging.
+ */
 void print_tests(struct tests_info_t *ts) {
     printf("\n\nTests:\n");
     printf("Number of trials : %d\n", ts->num_of_trials);
@@ -51,6 +59,11 @@ void print_tests(struct tests_info_t *ts) {
     printf("\t   version field                         : %d\n", ts->version_fuzzing_success);
 }
 
+/**
+ * This function calculates the checksum of a tar entry and updates its checksum field.
+ * @param entry Pointer to the tar_t structure representing a tar entry.
+ * @return The calculated checksum as an unsigned integer.
+ */
 unsigned int calculate_checksum(struct tar_t* entry) {
     memset(entry->chksum, ' ', 8);
     unsigned int check = 0;
@@ -62,6 +75,10 @@ unsigned int calculate_checksum(struct tar_t* entry) {
     return check;
 }
 
+/**
+ * This function generates a tar header with randomized values for testing purposes.
+ * @param header Pointer to the tar_t structure to be initialized.
+ */
 void generate_tar_header(struct tar_t *header) {
     int x = rand() % 1000 + 1;
     char filename[100];
@@ -86,6 +103,14 @@ void generate_tar_header(struct tar_t *header) {
     calculate_checksum(header);
 }
 
+/**
+ * This function creates a TAR archive and writes the provided data to it.
+ * @param header Pointer to the tar header structure.
+ * @param content_header Pointer to the content header data.
+ * @param content_header_size Size of the content header data.
+ * @param end_data Pointer to the end data block.
+ * @param end_size Size of the end data block.
+ */
 void create_tar(tar_t* header, char* content_header, size_t content_header_size, char* end_data, size_t end_size) {
     char* file_name = "Archive.tar";
     FILE *file = fopen(file_name, "wb");
@@ -116,6 +141,11 @@ void create_tar(tar_t* header, char* content_header, size_t content_header_size,
     
 }
 
+/**
+ * This function saves a successfully generated TAR file by renaming it with a success prefix.
+ * @param attempt The attempt number for naming the file.
+ * @param tar_file The name of the original TAR file to be saved.
+ */
 void save_success(int attempt, const char *tar_file) {
     char dest[256];
     snprintf(dest, sizeof(dest), "./success_%d_%s", attempt, tar_file);
@@ -149,6 +179,9 @@ void save_success(int attempt, const char *tar_file) {
     printf("Archive saved as %s\n", dest);
 }
 
+/**
+ * This function deletes extracted files from the current directory while preserving important ones.
+ */
 void delete_extracted_files() {
     if (strcmp(DELETE_SUCCESS, "True") == 0){
         system("find . ! -name '.gitignore' ! -name 'extractor_apple' ! -name 'extractor_x86_64' ! -name 'fuzzer_statement.pdf' ! -name 'main.c' ! -name 'README.md' ! -name 'fuzzer' ! -name 'fuzzer_statement.pdf' ! -name 'help.c' ! -name 'Makefile' ! -path './.' ! -path './..' ! -path './src' ! -path './src/*' ! -path './.git' ! -path './.idea' ! -path './.git/*' ! -path './.idea/*' -delete > /dev/null 2>&1");
@@ -157,24 +190,32 @@ void delete_extracted_files() {
     }
 }
 
+/**
+ * This function clears the terminal screen based on the operating system.
+ */
 void clear_terminal() {
-    // Vérifier si le système est Unix ou Windows
+    // Verify if the system is Unix ou Sindows 
     #ifdef _WIN32
-        system("cls");  // Commande pour Windows
+        system("cls");  // Command pour Windows
     #else
-        system("clear");  // Commande pour Unix (Linux, macOS)
+        system("clear");  // Command pour Unix (Linux, macOS)
     #endif
 }
 
+
+/**
+ * This function generates a non-numeric ASCII character, either a letter or a symbol.
+ * @return A randomly chosen non-numeric character.
+ */
 char generate_non_numeric_char() {
-    // Choisir un caractère parmi les lettres ou symboles ASCII
+    
     char c;
     int choice = rand() % 2;
     if (choice == 0) {
-        // Lettres majuscules ou minuscules
+       
         c = (rand() % 26) + (rand() % 2 == 0 ? 'A' : 'a');
     } else {
-        // Symboles ASCII comme !, @, #, $, %, etc.
+        
         const char symbols[] = "!@#$%^&*()_-+=<>?";
         c = symbols[rand() % (sizeof(symbols) - 1)];
     }

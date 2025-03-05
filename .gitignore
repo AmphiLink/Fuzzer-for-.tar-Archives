@@ -1,2 +1,3 @@
-archive.tar
-test
+Archive.tar
+./.vscode
+fuzzer

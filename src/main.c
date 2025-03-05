@@ -11,18 +11,27 @@
 
 #include "utils.h"
 
-#pragma pack(1)  // S'assurer que la structure fait exactement 512 octets
+#pragma pack(1)  
 static tar_t header;
 
 char* path_extractor;
 char* file_name;
 
+/**
+ * This function creates a base TAR archive with an empty end block.
+ * @param header Pointer to the tar_t structure containing the archive header.
+ */
 void create_base_tar(tar_t* header) {
     char end_data[BLOCK_SIZE*2];
     memset(end_data, 0, BLOCK_SIZE*2);
     create_tar(header, NULL, 0, end_data, BLOCK_SIZE*2);
 }
 
+/**
+ * This function executes the extractor on the given path and checks for expected outputs.
+ * @param path Path to the extractor binary.
+ * @return 1 if the extraction crashes, 0 otherwise.
+ */
 int extract(char* path){
     tests_info.num_of_trials++;
     int rv = 0;
@@ -53,6 +62,9 @@ int extract(char* path){
     return rv;
 }
 
+/**
+ * This function creates a TAR archive with multiple files inside and attempts extraction.
+ */
 void multiple_files(){
     generate_tar_header(&header);
     create_base_tar(&header);
@@ -74,7 +86,12 @@ void multiple_files(){
     }
 }
 
-void fuzz_field(char *field, size_t field_size) { // prend en compte la taille et le type de test avec un pointeur vers le champ à tester 
+/**
+ * This function performs fuzzing on a specific field of the TAR header with various test cases.
+ * @param field Pointer to the field being fuzzed.
+ * @param field_size Size of the field in bytes.
+ */
+void fuzz_field(char *field, size_t field_size) { 
     // Test 1 : Empty field
     generate_tar_header(&header);
     strncpy(field, "", field_size);
@@ -134,7 +151,7 @@ void fuzz_field(char *field, size_t field_size) { // prend en compte la taille e
     // Test 7 : Valeur négative
     generate_tar_header(&header);
     create_base_tar(&header);
-    snprintf(header.size, sizeof(header.size), "%011o", -100); // Stocker en octal
+    snprintf(header.size, sizeof(header.size), "%011o", -100); 
     if (extract(path_extractor) == 1) {
         tests_info.successful_with_negative_value++;
     }
@@ -230,6 +247,9 @@ void mtime_fuzzing() {
     tests_info.mtime_fuzzing_success+= tests_info.num_of_success - previous_success;
 }
 
+/**
+ * This function fuzzes the typeflag field by testing all 256 possible byte values.
+ */
 void typeflag_fuzzing() {   
     for (int i = 0; i <= 255; i++) {
         generate_tar_header(&header);   
@@ -271,6 +291,9 @@ void version_fuzzing() {
     tests_info.version_fuzzing_success+= tests_info.num_of_success - previous_success;
 }
 
+/**
+ * This function is the main function of our project which is an entry point for the program, it initializes tests and runs all fuzzing functions.
+ */
 int main(int argc, char* argv[]) {
     if (argc < 2) 
     {
@@ -284,7 +307,7 @@ int main(int argc, char* argv[]) {
     
 
     init_tests_info(&tests_info);
-    // Exécuter les tests spécifiques
+    // Execut the specific test
     name_fuzzing();
     mode_fuzzing();
     uid_fuzzing();
