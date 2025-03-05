@@ -116,7 +116,7 @@ void create_tar(tar_t* header, char* content_header, size_t content_header_size,
     char* file_name = "Archive.tar";
     FILE *file = fopen(file_name, "wb");
     if (!file) {
-        perror("Erreur ouverture fichier");
+        perror("Error opening file");
         exit(EXIT_FAILURE);
     }
     
@@ -197,9 +197,9 @@ void delete_extracted_files() {
 void clear_terminal() {
     // Verify if the system is Unix ou Sindows 
     #ifdef _WIN32
-        system("cls");  // Command pour Windows
+        system("cls");  // Command for Windows
     #else
-        system("clear");  // Command pour Unix (Linux, macOS)
+        system("clear");  // Command for Unix (Linux, macOS)
     #endif
 }
 

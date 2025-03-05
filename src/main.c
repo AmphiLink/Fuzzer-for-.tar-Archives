@@ -148,7 +148,7 @@ void fuzz_field(char *field, size_t field_size) {
         tests_info.successful_with_non_null_bit_start++;
     }
 
-    // Test 7 : Valeur négative
+    // Test 7 : Negative value
     generate_tar_header(&header);
     create_base_tar(&header);
     snprintf(header.size, sizeof(header.size), "%011o", -100); 
@@ -157,7 +157,7 @@ void fuzz_field(char *field, size_t field_size) {
     }
 
 
-    // Test 8 : Champ rempli de NULL
+    // Test 8 : Field filled with NULL
     generate_tar_header(&header);
     create_base_tar(&header);
     memset(header.name, '\0', sizeof(header.name)); 
@@ -165,7 +165,7 @@ void fuzz_field(char *field, size_t field_size) {
         tests_info.successful_with_null_field++;
     }
 
-    // Test 9 : Champ plus court que prévu
+    // Test 9 : Field shorter than expected 
     generate_tar_header(&header);
     create_base_tar(&header);
     memset(header.name, 'A', 5); 
@@ -174,7 +174,7 @@ void fuzz_field(char *field, size_t field_size) {
         tests_info.successful_with_short_field++;
     }
 
-    //Test 10: non-octal value
+    //Test 10: Non-octal value
     generate_tar_header(&header);
     memset(field, '8', field_size);
     create_base_tar(&header);
@@ -182,7 +182,7 @@ void fuzz_field(char *field, size_t field_size) {
         tests_info.successful_with_non_octal_value++;
     }
 
-     // Test 11 : Champ trop long
+     // Test 11 : Field too long
     generate_tar_header(&header);
     create_base_tar(&header);
     memset(header.name, 'E', sizeof(header.name) - 1); 
@@ -191,7 +191,7 @@ void fuzz_field(char *field, size_t field_size) {
         tests_info.successful_with_long_field++;
     }
 
-    // Test 12 : Champ rempli d'espaces
+    // Test 12 : Space-filled field 
     generate_tar_header(&header);
     create_base_tar(&header);
     memset(header.name, ' ', sizeof(header.name)); 
@@ -199,7 +199,7 @@ void fuzz_field(char *field, size_t field_size) {
         tests_info.successful_with_space_field++;
     }
 
-    // Test 13 : Champ avec caractères spéciaux
+    // Test 13 : Field with special features 
     generate_tar_header(&header);
     create_base_tar(&header);
     strncpy(header.name, "!@#$%^&*()", sizeof(header.name));
