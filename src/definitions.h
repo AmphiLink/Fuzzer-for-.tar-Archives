@@ -9,7 +9,7 @@
 
 #define REGTYPE  '0'
 
-#define DELETE_SUCCESS "True"
+#define DELETE_SUCCESS "False"
 
 //Modes
 #define TSUID    04000          /* set UID on execution */

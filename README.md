@@ -32,3 +32,6 @@ If you have an Apple silicon chip use this extractor:
 ```
 ./fuzzer "./extractor_apple"
 ```
+
+## Note
+If you don't want to save the success archives, edit in src/definitions.h : #define DELETE_SUCCESS "False" to #define DELETE_SUCCESS "True" 
