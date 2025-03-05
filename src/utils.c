@@ -60,7 +60,7 @@ void print_tests(struct tests_info_t *ts) {
 }
 
 /**
- * This function calculates the checksum of a tar entry and updates its checksum field.
+ * @brief This function calculates the checksum of a tar entry and updates its checksum field.
  * @param entry Pointer to the tar_t structure representing a tar entry.
  * @return The calculated checksum as an unsigned integer.
  */
@@ -76,7 +76,7 @@ unsigned int calculate_checksum(struct tar_t* entry) {
 }
 
 /**
- * This function generates a tar header with randomized values for testing purposes.
+ * @brief This function generates a tar header with randomized values for testing purposes.
  * @param header Pointer to the tar_t structure to be initialized.
  */
 void generate_tar_header(struct tar_t *header) {
@@ -104,7 +104,7 @@ void generate_tar_header(struct tar_t *header) {
 }
 
 /**
- * This function creates a TAR archive and writes the provided data to it.
+ * @brief This function creates a TAR archive and writes the provided data to it.
  * @param header Pointer to the tar header structure.
  * @param content_header Pointer to the content header data.
  * @param content_header_size Size of the content header data.
@@ -142,7 +142,7 @@ void create_tar(tar_t* header, char* content_header, size_t content_header_size,
 }
 
 /**
- * This function saves a successfully generated TAR file by renaming it with a success prefix.
+ * @brief This function saves a successfully generated TAR file by renaming it with a success prefix.
  * @param attempt The attempt number for naming the file.
  * @param tar_file The name of the original TAR file to be saved.
  */
@@ -180,7 +180,7 @@ void save_success(int attempt, const char *tar_file) {
 }
 
 /**
- * This function deletes extracted files from the current directory while preserving important ones.
+ * @brief This function deletes extracted files from the current directory while preserving important ones.
  */
 void delete_extracted_files() {
     if (strcmp(DELETE_SUCCESS, "True") == 0){
@@ -191,7 +191,7 @@ void delete_extracted_files() {
 }
 
 /**
- * This function clears the terminal screen based on the operating system.
+ * @brief This function clears the terminal screen based on the operating system.
  */
 void clear_terminal() {
     // Verify if the system is Unix ou Sindows 
@@ -204,7 +204,7 @@ void clear_terminal() {
 
 
 /**
- * This function generates a non-numeric ASCII character, either a letter or a symbol.
+ * @brief This function generates a non-numeric ASCII character, either a letter or a symbol.
  * @return A randomly chosen non-numeric character.
  */
 char generate_non_numeric_char() {

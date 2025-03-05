@@ -18,7 +18,7 @@ char* path_extractor;
 char* file_name;
 
 /**
- * This function creates a base TAR archive with an empty end block.
+ * @brief This function creates a base TAR archive with an empty end block.
  * @param header Pointer to the tar_t structure containing the archive header.
  */
 void create_base_tar(tar_t* header) {
@@ -28,7 +28,7 @@ void create_base_tar(tar_t* header) {
 }
 
 /**
- * This function executes the extractor on the given path and checks for expected outputs.
+ * @brief This function executes the extractor on the given path and checks for expected outputs.
  * @param path Path to the extractor binary.
  * @return 1 if the extraction crashes, 0 otherwise.
  */
@@ -63,7 +63,7 @@ int extract(char* path){
 }
 
 /**
- * This function creates a TAR archive with multiple files inside and attempts extraction.
+ * @brief This function creates a TAR archive with multiple files inside and attempts extraction.
  */
 void multiple_files(){
     generate_tar_header(&header);
@@ -87,7 +87,7 @@ void multiple_files(){
 }
 
 /**
- * This function performs fuzzing on a specific field of the TAR header with various test cases.
+ * @brief This function performs fuzzing on a specific field of the TAR header with various test cases.
  * @param field Pointer to the field being fuzzed.
  * @param field_size Size of the field in bytes.
  */
@@ -211,36 +211,60 @@ void fuzz_field(char *field, size_t field_size) {
     calculate_checksum(&header);
 }
 
+/**
+ * @brief This function performs fuzzing on the name field of the TAR header.
+ *        This field represents the name of the file stored in the archive.
+ */
 void name_fuzzing() {
     int previous_success = tests_info.num_of_success;
     fuzz_field(header.name, sizeof(header.name));
     tests_info.name_fuzzing_success+= tests_info.num_of_success - previous_success;
 }
 
+/**
+ * @brief This function performs fuzzing on the mode field of the TAR header.
+ *        This field specifies the file permissions.
+ */
 void mode_fuzzing() {
     int previous_success = tests_info.num_of_success;
     fuzz_field(header.mode, sizeof(header.mode));
     tests_info.mode_fuzzing_success+= tests_info.num_of_success - previous_success;
 }
 
+/**
+ * @brief This function performs fuzzing on the UID field of the TAR header.
+ *        This field contains the user ID of the file owner.
+ */
 void uid_fuzzing(){
     int previous_success = tests_info.num_of_success;
     fuzz_field(header.uid, sizeof(header.uid));
     tests_info.uid_fuzzing_success+= tests_info.num_of_success - previous_success;
 }
 
+/**
+ * @brief This function performs fuzzing on the GID field of the TAR header.
+ *        This field contains the group ID of the file owner.
+ */
 void gid_fuzzing(){
     int previous_success = tests_info.num_of_success;
     fuzz_field(header.gid, sizeof(header.gid));
     tests_info.gid_fuzzing_success+= tests_info.num_of_success - previous_success;
 }
 
+/**
+ * @brief This function performs fuzzing on the size field of the TAR header.
+ *        This field specifies the size of the file in bytes.
+ */
 void size_fuzzing() {
     int previous_success = tests_info.num_of_success;
     fuzz_field(header.size, sizeof(header.size));
     tests_info.size_fuzzing_success+= tests_info.num_of_success - previous_success;
 }
 
+/**
+ * @brief This function performs fuzzing on the mtime field of the TAR header.
+ *        This field represents the last modification time of the file.
+ */
 void mtime_fuzzing() {
     int previous_success = tests_info.num_of_success;
     fuzz_field(header.mtime, sizeof(header.mtime));
@@ -262,29 +286,51 @@ void typeflag_fuzzing() {
     }
 }
 
+/**
+ * @brief This function performs fuzzing on the linkname field of the TAR header.
+ *        This field contains the target name if the file is a symbolic or hard link.
+ */
 void linkname_fuzzing() {
     int previous_success = tests_info.num_of_success;
     fuzz_field(header.linkname, sizeof(header.linkname));
     tests_info.linkname_fuzzing_success+= tests_info.num_of_success - previous_success;
 }
+
+/**
+ * @brief This function performs fuzzing on the uname field of the TAR header.
+ *        This field stores the name of the file owner.
+ */
 void uname_fuzzing() {
     int previous_success = tests_info.num_of_success;
     fuzz_field(header.uname, sizeof(header.uname));
     tests_info.uname_fuzzing_success+= tests_info.num_of_success - previous_success;
 }
 
+/**
+ * @brief This function performs fuzzing on the gname field of the TAR header.
+ *        This field stores the group name of the file owner.
+ */
 void gname_fuzzing() {
     int previous_success = tests_info.num_of_success;
     fuzz_field(header.gname, sizeof(header.gname));
     tests_info.gname_fuzzing_success+= tests_info.num_of_success - previous_success;
 }
 
+/**
+ * @brief This function performs fuzzing on the magic field of the TAR header.
+ *        This field identifies the archive format (typically "ustar").
+ */
 void magic_fuzzing() {
     int previous_success = tests_info.num_of_success;
     fuzz_field(header.magic, sizeof(header.magic));
     tests_info.magic_fuzzing_success+= tests_info.num_of_success - previous_success;
 }
 
+
+/**
+ * @brief This function performs fuzzing on the version field of the TAR header.
+ *        This field specifies the version of the archive format.
+ */
 void version_fuzzing() {
     int previous_success = tests_info.num_of_success;
     fuzz_field(header.version, sizeof(header.version));
@@ -292,7 +338,7 @@ void version_fuzzing() {
 }
 
 /**
- * This function is the main function of our project which is an entry point for the program, it initializes tests and runs all fuzzing functions.
+ * @brief This function is the main function of our project which is an entry point for the program, it initializes tests and runs all fuzzing functions.
  */
 int main(int argc, char* argv[]) {
     if (argc < 2) 
