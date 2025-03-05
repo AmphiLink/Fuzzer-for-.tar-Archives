@@ -73,6 +73,11 @@ struct tests_info_t { // Struct to keep track of the status of various tests per
     int gname_fuzzing_success;
     int magic_fuzzing_success;
     int version_fuzzing_success;
+
+    int successful_with_negative_value;
+    int successful_with_null_field;
+    int successful_with_short_field;
+
 };
 
 struct tests_info_t tests_info;
@@ -92,7 +97,10 @@ void print_tests(struct tests_info_t *ts) {
     printf("\t     non numeric field                 : %d\n", ts->successful_with_non_numeric_field);
     printf("\t     non null terminated field         : %d\n", ts->successful_with_non_null_terminated_field); 
     printf("\t     null byte in the middle of field  : %d\n", ts->successful_with_null_byte_in_middle);  
-    printf("\t     non null bit start                : %d\n", ts->successful_with_non_null_bit_start);  
+    printf("\t     non null bit start                : %d\n", ts->successful_with_non_null_bit_start); 
+    printf("\t   Negative value   : %d\n", tests_info.successful_with_negative_value);
+    printf("\t   NULL field       : %d\n", tests_info.successful_with_null_field);
+    printf("\t   Short field      : %d\n", tests_info.successful_with_short_field);
     printf("\t     multiple files                    : %d\n", ts->successful_with_multiple_files);
     printf("Success with header's fields: \n");
     printf("\t   name field       : %d\n", ts->name_fuzzing_success);
@@ -354,6 +362,32 @@ void fuzz_field(char *field, size_t field_size) { // prend en compte la taille e
     multiple_files();
     if(extract(path_extractor) == 1){
         tests_info.successful_with_multiple_files++;
+    }
+
+    // Test 8 : Valeur négative
+    generate_tar_header(&header);
+    create_base_tar(&header);
+    snprintf(header.size, sizeof(header.size), "%011o", -100); // Stocker en octal
+    if (extract(path_extractor) == 1) {
+        tests_info.successful_with_negative_value++;
+    }
+
+
+    // Test 9 : Champ rempli de NULL
+    generate_tar_header(&header);
+    create_base_tar(&header);
+    memset(header.name, '\0', sizeof(header.name)); 
+    if (extract(path_extractor) == 1) {
+        tests_info.successful_with_null_field++;
+    }
+
+    // Test 10 : Champ plus court que prévu
+    generate_tar_header(&header);
+    create_base_tar(&header);
+    memset(header.name, 'A', 5); 
+    header.name[5] = '\0'; 
+    if (extract(path_extractor) == 1) {
+        tests_info.successful_with_short_field++;
     }
 
 
