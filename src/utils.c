@@ -33,6 +33,9 @@ void print_tests(struct tests_info_t *ts) {
     printf("\t   Short field                           : %d\n", tests_info.successful_with_short_field);
     printf("\t   multiple files                        : %d\n", ts->successful_with_multiple_files);
     printf("\t   Non-Octal value                       : %d\n", ts->successful_with_non_octal_value);
+    printf("\t   Long field                            : %d\n", tests_info.successful_with_long_field);
+    printf("\t   Space field                           : %d\n", tests_info.successful_with_space_field);
+    printf("\t   Special chars                         : %d\n", tests_info.successful_with_special_chars);
     printf("Success with header's fields: \n");
     printf("\t   name field                            : %d\n", ts->name_fuzzing_success);
     printf("\t   mode field                            : %d\n", ts->mode_fuzzing_success);

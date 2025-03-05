@@ -19,6 +19,10 @@ struct tests_info_t { // Struct to keep track of the status of various tests per
     int successful_with_null_field;
     int successful_with_short_field;
     int successful_with_non_octal_value;
+    int successful_with_long_field;
+    int successful_with_space_field;
+    int successful_with_special_chars;
+
 
     int name_fuzzing_success;
     int mode_fuzzing_success;

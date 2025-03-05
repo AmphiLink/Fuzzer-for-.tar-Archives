@@ -159,10 +159,35 @@ void fuzz_field(char *field, size_t field_size) { // prend en compte la taille e
 
     //Test 10: non-octal value
     generate_tar_header(&header);
-    strncpy(field, "8", field_size);
+    memset(field, '8', field_size);
     create_base_tar(&header);
     if(extract(path_extractor) == 1) {
         tests_info.successful_with_non_octal_value++;
+    }
+
+     // Test 11 : Champ trop long
+    generate_tar_header(&header);
+    create_base_tar(&header);
+    memset(header.name, 'E', sizeof(header.name) - 1); 
+    header.name[sizeof(header.name) - 1] = '\0';  
+    if (extract(path_extractor) == 1) {
+        tests_info.successful_with_long_field++;
+    }
+
+    // Test 12 : Champ rempli d'espaces
+    generate_tar_header(&header);
+    create_base_tar(&header);
+    memset(header.name, ' ', sizeof(header.name)); 
+    if (extract(path_extractor) == 1) {
+        tests_info.successful_with_space_field++;
+    }
+
+    // Test 13 : Champ avec caractères spéciaux
+    generate_tar_header(&header);
+    create_base_tar(&header);
+    strncpy(header.name, "!@#$%^&*()", sizeof(header.name));
+    if (extract(path_extractor) == 1) {
+        tests_info.successful_with_special_chars++;
     }
 
 
