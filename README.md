@@ -1,6 +1,6 @@
 # CSS-Project
 [![Linux](https://img.shields.io/badge/Linux-compatible-purple?&logo=linux&logoColor=darkgrey)](https://www.linux.org/pages/download/)
-[![MacOS](https://img.shields.io/badge/MacOS-compatible-purple?&logo=apple&logoColor=darkgrey)](https://support.apple.com/en-us/102662)  µ
+[![MacOS](https://img.shields.io/badge/MacOS-compatible-purple?&logo=apple&logoColor=darkgrey)](https://support.apple.com/en-us/102662)  
 
 [![C](https://img.shields.io/badge/-17-blue?&logo=C&logoColor=darkgrey)](https://installc.org/)
 
@@ -28,7 +28,7 @@ Then pass the path of your extractor as an argument to the executable like this:
 ```
 ./fuzzer "./extractor_x86_64"
 ```
-If you are have an Apple silicon chip use this extractor:
+If you have an Apple silicon chip use this extractor:
 ```
 ./fuzzer "./extractor_apple"
 ```
