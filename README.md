@@ -28,7 +28,7 @@ Then pass the path of your extractor as an argument to the executable like this:
 ```
 ./fuzzer "./extractor_x86_64"
 ```
-If you are have an Apple silicon chip use this extractor:
+If you have an Apple silicon chip use this extractor:
 ```
 ./fuzzer "./extractor_apple"
 ```
