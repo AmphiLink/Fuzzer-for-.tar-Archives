@@ -112,6 +112,7 @@ void generate_tar_header(struct tar_t *header) {
  * @param end_size Size of the end data block.
  */
 void create_tar(tar_t* header, char* content_header, size_t content_header_size, char* end_data, size_t end_size) {
+    calculate_checksum(header);
     char* file_name = "Archive.tar";
     FILE *file = fopen(file_name, "wb");
     if (!file) {
