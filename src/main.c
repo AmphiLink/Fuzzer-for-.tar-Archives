@@ -224,8 +224,23 @@ void name_fuzzing() {
 /**
  * @brief This function performs fuzzing on the mode field of the TAR header.
  *        This field specifies the file permissions.
- */
+*/
 void mode_fuzzing() {
+    //First pass on each mode to verif if theyr are supported by the extractor
+    unsigned int modes[] = {
+        TSUID, TSGID, TSVTX, 
+        TUREAD, TUWRITE, TUEXEC, 
+        TGREAD, TGWRITE, TGEXEC, 
+        TOREAD, TOWRITE, TOEXEC
+    };
+    int num_modes = sizeof(modes) / sizeof(modes[0]);
+
+    for (int i = 0; i < num_modes; i++) {
+        snprintf(header.mode, sizeof(header.mode), "%07o", modes[i]);
+        if(extract(path_extractor) == 1){
+            tests_info.mode_fuzzing_success++;
+        }
+    }
     int previous_success = tests_info.num_of_success;
     fuzz_field(header.mode, sizeof(header.mode));
     tests_info.mode_fuzzing_success+= tests_info.num_of_success - previous_success;
