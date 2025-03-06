@@ -266,16 +266,41 @@ void size_fuzzing() {
  *        This field represents the last modification time of the file.
  */
 void mtime_fuzzing() {
+    int minus1 = 0;
+    int minus2 = 0;
     int previous_success = tests_info.num_of_success;
     fuzz_field(header.mtime, sizeof(header.mtime));
-    tests_info.mtime_fuzzing_success+= tests_info.num_of_success - previous_success;
+    struct tm time1 = {0};
+    time1.tm_year = 1899 - 1900; 
+    time1.tm_mon = 0;            
+    time1.tm_mday = 1;           
+    time_t timestamp1 = mktime(&time1);
+    snprintf(header.mtime, sizeof(header.mtime),"%011lo", timestamp1);
+    if (extract(path_extractor) == 1){
+        tests_info.mtime_fuzzing_success += 1;
+        int minus1 = 1;
+    }
+    
+    // Date 2 : 2027-03-06
+    struct tm time2 = {0};
+    time2.tm_year = 2027 - 1900; 
+    time2.tm_mon = 2;            
+    time2.tm_mday = 6;           
+    time_t timestamp2 = mktime(&time2);
+    snprintf(header.mtime, sizeof(header.mtime),"%011lo", timestamp2);
+    snprintf(header.mtime, sizeof(header.mtime),"%011lo", timestamp1);
+    if (extract(path_extractor) == 1){
+        tests_info.mtime_fuzzing_success += 1;
+        int minus2 = 1;
+    }
+    tests_info.mtime_fuzzing_success+= tests_info.num_of_success - previous_success - minus1 - minus2;
 }
 
 /**
- * This function fuzzes the typeflag field by testing all 256 possible byte values.
+ * @brief This function fuzzes the typeflag field by testing all 256 possible byte values so 0 to 0xFF in hexadecimal.
  */
 void typeflag_fuzzing() {   
-    for (int i = 0; i <= 255; i++) {
+    for (int i = 0; i <= 0xFF; i++) {
         generate_tar_header(&header);   
         header.typeflag = (char)i;    
         create_base_tar(&header);
